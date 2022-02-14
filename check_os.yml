@@ -1,0 +1,21 @@
+---
+- name: MariaDB database
+  hosts: dbservers
+  remote_user: root
+  become: true
+  become_user: root
+  gather_facts: true
+  tasks:
+    - name: Generate_OS_Details
+      script: ./check_distro.sh
+      register: os_details
+    - name: Display_OS_Detaisls
+      debug: 
+        msg: "{{ os_details.stdout }}"
+    - name: Check_Existing_DB_Service
+      script: ./check_existing_db_service.sh
+      register: db_service_check
+    - name: Display_DB_Service_Status
+      debug: 
+        msg: "{{ db_service_check.stdout }}"
+
