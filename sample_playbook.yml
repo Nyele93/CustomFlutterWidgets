@@ -1,0 +1,13 @@
+---
+- name: MariaDB database
+  hosts: localhost
+  connection: local
+  become_user: root
+  gather_facts: true
+  vars:
+    repl_password: "s3cretPwd"
+    repl_user: "repl_user"
+  tasks:
+    - name: check value
+      debug:
+        msg: "{{ ansible_distribution }}"

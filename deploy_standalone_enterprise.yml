@@ -1,0 +1,83 @@
+---
+- name: MariaDB database
+  hosts: dbservers
+  remote_user: root
+  become: true
+  become_user: root
+  gather_facts: true
+  vars:
+    repl_password: "s3cretPwd"
+    repl_user: "repl_user"
+    mariadb_version: "10.5"
+  tasks:
+    - name: set up MariaDB repository
+      shell: (curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup | sudo bash -s -- --mariadb-server-version="mariadb-{{ mariadb_version }}" --write-to-stdout 2>&1 | tee $(tty))
+      register: repo_check
+    - name: check res
+      debug:
+        msg: "{{ repo_check.stdout }}"
+    - name: failover to latest when version not available for OS distribution
+      shell: curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup | sudo bash
+      when: repo_check.stdout | regex_search("MariaDB Server {{ mariadb_version }} is not available for") 
+      #add to suppress warning here.
+    #- name: refresh yum repo
+      #command: yum clean all
+    #- name: Create MariaDB repo
+      #copy: 
+           #src: mariadb.repo
+           #dest: /etc/yum.repos.d/mariadb.repo
+    - name: install mariadb
+      #yum:
+          #name: 
+            #- mariadb-server
+            #- python3-PyMySQL
+          #enablerepo: mariadb-repo
+          #state: latest
+          #update_cache: yes
+      #when: ansible_distribution == "CentOS | Debian"
+      apt:
+        pkg:
+          - mariadb-server
+          - mariadb-client
+          - mariadb-backup
+          - wget
+          - apt-transport-https
+        state: present
+        #default_release:
+        update_cache: yes
+        install_recommends: yes
+        #cache_valid_time: 7200
+      when: ansible_facts['distribution'] == "Ubuntu"
+    - name: Start mariadb service
+      service:
+              name: mariadb
+              enabled: yes
+              state: started
+    - name: create the dba user
+      command: mysql -e "CREATE USER IF NOT EXISTS 'amadi'@'localhost' identified by 'Password12'";
+      tags: 
+        - users
+    - name: grant required privileges
+      command: mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'amadi'@'localhost' WITH GRANT OPTION"
+    - name: Flush Privileges
+      command: mysql -e "FLUSH PRIVILEGES"
+    - name: reset bind_address
+      command: sed -i 's/bind-address/#bind-address/g' /etc/mysql/mariadb.conf.d/50-server.cnf
+    - name: Generate server_id for the DB Servers
+      shell: cat /proc/sys/kernel/random/uuid | awk -F- '/[0-9]/ {print $1}' | grep -Eo '[0-9][0-9]' | head -1
+      register: mysql_server_id
+    - name: check value
+      debug:
+        msg: "{{ mysql_server_id.stdout }}"
+    - name: Copy my.cnf template files
+      template:
+        src: ini_cnf_template
+        dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+        owner: mysql
+        group: mysql
+        mode: 0600
+    - name: Restart mariadb service
+      service:
+              name: mariadb
+              enabled: yes
+              state: restarted
