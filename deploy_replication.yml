@@ -1,0 +1,99 @@
+---
+- name: MariaDB database
+  hosts: dbservers
+  remote_user: root
+  become: true
+  become_user: root
+  gather_facts: true
+  vars:
+    repl_password: "s3cretPwd"
+    repl_user: "repl_user"
+  tasks:
+    #- name: refresh yum repo
+      #command: yum clean all
+    #- name: Create MariaDB repo
+      #copy: 
+           #src: mariadb.repo
+           #dest: /etc/yum.repos.d/mariadb.repo
+    - name: install mariadb
+      #yum:
+          #name: 
+            #- mariadb-server
+            #- python3-PyMySQL
+          #enablerepo: mariadb-repo
+          #state: latest
+          #update_cache: yes
+      #when: ansible_facts['distribution'] == "CentOS"
+      apt: 
+        name: mariadb-server 
+        state: present
+        #default_release:
+        update_cache: yes
+        install_recommends: yes
+        #cache_valid_time: 7200
+      when: ansible_facts['distribution'] == "Ubuntu"
+    - name: Start mariadb service
+      service:
+              name: mariadb
+              enabled: yes
+              state: started
+    - name: create the dba user
+      command: mysql -e "CREATE USER IF NOT EXISTS 'amadi'@'localhost' identified by 'Password12'";
+      tags: 
+        - users
+    - name: grant required privileges
+      command: mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'amadi'@'localhost' WITH GRANT OPTION"
+    - name: Flush Privileges
+      command: mysql -e "FLUSH PRIVILEGES"
+    - name: create replication user
+      mysql_user:
+        login_user=amadi
+        login_password=Password12
+        login_host=localhost
+        name={{ repl_user }}
+        host="%"
+        password={{ repl_password }}
+        priv="*.*:REPLICATION SLAVE,RELOAD,REPLICATION CLIENT,SUPER"
+        state=present
+    - name: reset bind_address
+      command: sed -i 's/bind-address/#bind-address/g' /etc/mysql/mariadb.conf.d/50-server.cnf
+    - name: Generate server_id for the DB Servers
+      shell: cat /proc/sys/kernel/random/uuid | awk -F- '/[0-9]/ {print $1}' | grep -Eo '[0-9][0-9]' | head -1
+      register: mysql_server_id
+    - name: check value
+      debug:
+        msg: "{{ mysql_server_id.stdout }}"
+    - name: Copy my.cnf template files
+      template:
+        src: ini_cnf_template
+        dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+        owner: mysql
+        group: mysql
+        mode: 0600
+    - name: Restart mariadb service
+      service:
+              name: mariadb
+              enabled: yes
+              state: restarted
+- hosts: master
+  remote_user: root
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Reset master logs
+      command: mysql -e "RESET MASTER;"
+- hosts: replica
+  remote_user: root
+  become: true
+  gather_facts: false
+  vars:
+    repl_password: "s3cretPwd"
+    repl_user: "repl_user"
+  tasks:
+    - name: Setup replication
+      command: mysql -e "CHANGE MASTER TO master_host='master',master_user='{{ repl_user }}',master_password='{{ repl_password }}',master_connect_retry=10,master_use_gtid=slave_pos;"
+    - name: start replication slave thread
+      command: mysql -e "START SLAVE;"
+    - name: set replica to read_only
+      command: mysql -e "SET GLOBAL read_only=ON;"
+
