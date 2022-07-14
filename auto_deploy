@@ -1,5 +1,4 @@
 #!/bin/bash
-#set +x
 declare -r intro_info="This is an Automated program to deploy mariadb Instances using Ansible"
 declare -r wlc_text="||*************Launching Configuration*************||"
 declare -a details_arr
@@ -197,19 +196,23 @@ standalone_install(){
   read -ep "Enter Mariadb version(e.g. 10.4) [$default_version]: " mariadb_version
   selected_version=${mariadb_version-$default_version}
   #write version to variable file and use in playbook
+  sed -i "s/dbVersion/$mariadb_version/g" deploy_standalone_enterprise.yml 
 
+  echo "Choose MariaDB distribution to install: "
   select edition in  "Enterprise" "Community" "quit"
 do
   	case $edition in 
                 Enterprise) echo "Selected edition: Enterprise"; edition="Enterprise";;
                 Community) echo "Selected edition: Community"; edition="Community";;
-                quit) echo "Terminating Program... Bye..."; break;;
+                #quit) echo "Terminating Program... Bye..."; break;;
                 *) echo "Invalid option";;
         esac
 	break
 done
   if [[ $edition == "Enterprise" ]]; then
       read -p "Enter Customer key:" cust_key
+      #write customer token  key to config file
+      sed -i "s/custToken/$cust_key/g" deploy_standalone_enterprise.yml 
   fi
 
   read -p "Enter Number of Nodes:" no_instances
@@ -292,6 +295,16 @@ start_deployment(){
   elif [[ "$1" == "false" && "$2" == "Community" ]]; then
     ansible-playbook deploy_replication.yml -i $custom_host_file
   fi
+
+   #reset config vars to default.
+   sed -i '/mariadb_version/ c\mariadb_version: "dbVersion"' deploy_standalone_enterprise.yml
+   sed -i '/customer_token/ c\customer_token: "custToken"' deploy_standalone_enterprise.yml
+
+   sed -i '/mariadb_version/ c\mariadb_version: "dbVersion"' deploy_standalone.yml
+   sed -i '/customer_token/ c\customer_token: "custToken"' deploy_standalone.yml
+
+   sed -i '/mariadb_version/ c\mariadb_version: "dbVersion"' deploy_replication.yml
+   sed -i '/customer_token/ c\customer_token: "custToken"' deploy_replication_enterprise.yml
 }
 
 check_OS(){
@@ -341,12 +354,12 @@ fi
 echo "Select one of the tasks below to proceed: "
 echo "-------------------------------------------------"
 
-select task in  "MASTER-REPLICAS" "STANDALONE_INSTANCES" "GALERA" "quit"
+select task in  "MASTER-REPLICAS" "STANDALONE_INSTANCES" "GALERA_CLUSTER" "quit"
 do
 	case $task in 
 		MASTER-REPLICAS) echo "Selected task: MASTER-REPLICAS"; begin_install;;
 		STANDALONE_INSTANCES) echo "Selected task: SINGLE_INSTANCES"; standalone_install;;
-		GALERA) echo "Selected task: GALERA"; begin_install;;
+		GALERA_CLUSTER) echo "Selected task: GALERA"; break;;
                 quit) echo "Terminating Program... Bye..."; break;;
 		*) echo "Invalid option";;
 	esac
