@@ -6,9 +6,27 @@
   become_user: root
   gather_facts: true
   vars:
-    repl_password: "s3cretPwd"
-    repl_user: "repl_user"
+    replication_password: "s3cretPwd"
+    replication_user: "repl_user"
+    dba_user: "dba_usr"
+    dba_password: "dba_pwd"
+    mariadb_version: "dbVersion"
+    customer_token: "custToken"
   tasks:
+    - name: install dependencies
+      apt:
+        pkg:
+          - wget
+          - apt-transport-https
+        state: present
+      when: ansible_facts['distribution'] == "Ubuntu"
+    - name: set up MariaDB repository
+      shell: wget https://dlm.mariadb.com/enterprise-release-helpers/mariadb_es_repo_setup
+      register: repo_check
+    - name: modify repo_setup
+      shell: chmod +x mariadb_es_repo_setup
+    - name: apply customer token
+      shell: ./mariadb_es_repo_setup --token="{{ customer_token }}" --apply --mariadb-server-version="{{ mariadb_version }}"
     #- name: refresh yum repo
       #command: yum clean all
     #- name: Create MariaDB repo
@@ -25,7 +43,10 @@
           #update_cache: yes
       #when: ansible_facts['distribution'] == "CentOS"
       apt: 
-        name: mariadb-server 
+        pkg:
+          - mariadb-server
+          - mariadb-client
+          - mariadb-backup 
         state: present
         #default_release:
         update_cache: yes
@@ -38,7 +59,7 @@
               enabled: yes
               state: started
     - name: create the dba user
-      command: mysql -e "CREATE USER IF NOT EXISTS 'amadi'@'localhost' identified by 'Password12'";
+      command: mysql -e "CREATE USER IF NOT EXISTS 'admin'@'localhost' identified by 'Icui4cxh!$$'";
       tags: 
         - users
     - name: grant required privileges
@@ -47,8 +68,8 @@
       command: mysql -e "FLUSH PRIVILEGES"
     - name: create replication user
       mysql_user:
-        login_user=amadi
-        login_password=Password12
+        login_user=admin
+        login_password=Icui4cxh!$$
         login_host=localhost
         name={{ repl_user }}
         host="%"

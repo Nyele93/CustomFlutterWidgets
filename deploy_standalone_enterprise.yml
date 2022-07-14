@@ -8,17 +8,23 @@
   vars:
     repl_password: "s3cretPwd"
     repl_user: "repl_user"
-    mariadb_version: "10.5"
+    mariadb_version: "dbVersion"
+    customer_token: "custToken"
   tasks:
+    - name: install needed dependencies
+      apt:
+        pkg:
+          - wget
+          - apt-transport-https
+        state: present
+      when: ansible_facts['distribution'] == "Ubuntu"
     - name: set up MariaDB repository
-      shell: (curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup | sudo bash -s -- --mariadb-server-version="mariadb-{{ mariadb_version }}" --write-to-stdout 2>&1 | tee $(tty))
+      shell: wget https://dlm.mariadb.com/enterprise-release-helpers/mariadb_es_repo_setup
       register: repo_check
-    - name: check res
-      debug:
-        msg: "{{ repo_check.stdout }}"
-    - name: failover to latest when version not available for OS distribution
-      shell: curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup | sudo bash
-      when: repo_check.stdout | regex_search("MariaDB Server {{ mariadb_version }} is not available for") 
+    - name: modify repo_setup
+      shell: chmod +x mariadb_es_repo_setup
+    - name: apply customer token
+      shell: ./mariadb_es_repo_setup --token="{{ customer_token }}" --apply --mariadb-server-version="{{ mariadb_version }}"
       #add to suppress warning here.
     #- name: refresh yum repo
       #command: yum clean all
@@ -40,8 +46,6 @@
           - mariadb-server
           - mariadb-client
           - mariadb-backup
-          - wget
-          - apt-transport-https
         state: present
         #default_release:
         update_cache: yes
@@ -53,14 +57,6 @@
               name: mariadb
               enabled: yes
               state: started
-    - name: create the dba user
-      command: mysql -e "CREATE USER IF NOT EXISTS 'amadi'@'localhost' identified by 'Password12'";
-      tags: 
-        - users
-    - name: grant required privileges
-      command: mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'amadi'@'localhost' WITH GRANT OPTION"
-    - name: Flush Privileges
-      command: mysql -e "FLUSH PRIVILEGES"
     - name: reset bind_address
       command: sed -i 's/bind-address/#bind-address/g' /etc/mysql/mariadb.conf.d/50-server.cnf
     - name: Generate server_id for the DB Servers
