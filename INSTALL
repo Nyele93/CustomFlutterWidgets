@@ -1,0 +1,11 @@
+INSTALLATION INSTRUCTIONS
+=========================
+
+Follow these steps in the exact order shown to deploy tool:
+
+1) become the root user
+2) run the install_from_repo.sh script from GIT to fetch auto_deploy from GIT repo.
+3) run auto_deploy setup-config, this will create a sample config file in the /etc/mariadb location.
+4) tweak configuration file to desired config as per customer's request, see comments in the file for help.
+
+To read documentation for the tool run auto_deploy --help.
