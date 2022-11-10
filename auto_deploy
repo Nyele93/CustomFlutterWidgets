@@ -305,13 +305,7 @@ check_OS(){
 printf "\033[0;33mDetecting Server Architectures\033[33;5m......\033[0m\n"
 oscheck_status=$(sshpass -p $ssh_password ssh -o ConnectTimeout=5 $ssh_user@$host 'bash -s' < $(dirname "$0")/check_distro.sh)
 ansible-playbook check_os.yml -i $custom_host_file
-write_custom_resolv
 check_existingDB $1 $2
-}
-
-write_custom_resolv(){
- printf "\033[0;33mWriting hostnames to /etc/resolve.conf...\033[33;5m......\033[0m\n"
- ansible-playbook write_res_conf.yml -i $custom_host_file
 }
 
 check_existingDB(){
