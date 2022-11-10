@@ -146,6 +146,22 @@ if [[ $no_instances -gt 0 ]]; then
 	read -p "alias($i): " alias
 	read -p "host($i):  " host
 	read -p "ssh_user:  " ssh_user
+
+while [[ -z $ssh_trust_set ]]
+   do
+    read -p "Use ssh_trust connection - assumes key is in place. [y/n]: "  ssh_trust_set
+    if [[ $ssh_trust_set = "y" || $ssh_trust_set = "yes" ]]; then 
+          hosts_array[$((i-1))]="$host"
+#line should execute only if using dynamic hosts
+cat >> server_details <<-EOF
+$inst_no,$alias,$host,$ssh_user,"not set(using keys)"
+EOF
+
+#write custom host deployment
+cat >> $custom_host_file <<-EOF
+$alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user
+EOF
+    elif [[ $ssh_trust_set = "n" || $ssh_trust_set = "no" ]]; then
 	unset ssh_password
         unset charcount        
         unset inst_no 
@@ -174,6 +190,7 @@ if [[ $no_instances -gt 0 ]]; then
 		    ssh_password+="$ssh_pwd"
 		fi
 	done
+hosts_array[$((i-1))]="$host"
 declare redacted_pwd=${ssh_password//[a-z0-9]/x}
 cat >> server_details <<-EOF
 $inst_no,$alias,$host,$ssh_user,$redacted_pwd
@@ -182,18 +199,23 @@ EOF
 cat >> $custom_host_file <<-EOF
 $alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user ansible_password=$ssh_password
 EOF
+    fi
+   done
 
    done
 echo
    printTableformat ',' "$(cat server_details)"
    echo
+    while [[ -z $conf_pr ]]
+   do
    read -p "Proceed with deploying to the above servers[Y/N]: "  conf_pr
    if [[ $conf_pr = "y" || $conf_pr = "yes" ]]; then
    	echo "Launching Auto Deploy."; launchAnsible false $edition
    elif [[ $conf_pr = "n" || $conf_pr = "no" ]]; then
    echo "Terminating Program... Bye..."
    fi
-#**********
+  done
+
 else
    echo "[Error] : Please enter a Number greater than 0"
 fi
@@ -230,10 +252,26 @@ if [[ $no_instances -gt 0 ]]; then
    do
 	echo
 	echo "configure instance: $i"
-	#instance_details[alias]
+     
 	read -p "alias($i): " alias
 	read -p "host($i):  " host
 	read -p "ssh_user:  " ssh_user
+
+while [[ -z $ssh_trust_set ]]
+   do
+    read -p "Use ssh_trust connection - assumes key is in place. [y/n]: "  ssh_trust_set
+    if [[ $ssh_trust_set = "y" || $ssh_trust_set = "yes" ]]; then 
+          hosts_array[$((i-1))]="$host"
+#line should execute only if using dynamic hosts
+cat >> server_details <<-EOF
+$inst_no,$alias,$host,$ssh_user,"not set(using keys)"
+EOF
+
+#write custom host deployment
+cat >> $custom_host_file <<-EOF
+$alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user
+EOF
+    elif [[ $ssh_trust_set = "n" || $ssh_trust_set = "no" ]]; then
 	unset ssh_password
         unset charcount        
         unset inst_no 
@@ -262,6 +300,7 @@ if [[ $no_instances -gt 0 ]]; then
 		    ssh_password+="$ssh_pwd"
 		fi
 	done
+hosts_array[$((i-1))]="$host"
 declare redacted_pwd=${ssh_password//[a-z0-9]/x}
 cat >> server_details <<-EOF
 $inst_no,$alias,$host,$ssh_user,$redacted_pwd
@@ -270,17 +309,22 @@ EOF
 cat >> $custom_host_file <<-EOF
 $alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user ansible_password=$ssh_password
 EOF
+     fi
+    done
 
    done
 echo
    printTableformat ',' "$(cat server_details)"
    echo
+   while [[ -z $conf_pr ]]
+  do
    read -p "Proceed with deploying to the above servers[Y/N]: "  conf_pr
    if [[ $conf_pr = "y" || $conf_pr = "yes" ]]; then
    	echo "Launching Auto Deploy."; launchAnsible true $edition
    elif [[ $conf_pr = "n" || $conf_pr = "no" ]]; then
    echo "Terminating Program... Bye..."
    fi
+  done
 #**********
 else
    echo "[Error] : Please enter a Number greater than 0"
