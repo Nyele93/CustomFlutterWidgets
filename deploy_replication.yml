@@ -5,8 +5,9 @@
   become: true
   become_user: root
   gather_facts: true
-  vars_files:
-    - playbook_vars.yml
+  pre_tasks:
+    - name: Set discovered Ansible Python interpreter.
+      apt: name=python3-mysqldb state=present
   tasks:
     - name: install needed dependencies
       apt:
@@ -70,26 +71,44 @@
               name: mariadb
               enabled: yes
               state: restarted
+    - name: create replication user
+      command: |
+        mysql -ABNe "GRANT REPLICATION SLAVE,REPLICATION CLIENT ON *.* TO '{{ repl_user }}'@'%' IDENTIFIED BY '{{ repl_pwd }}';"
+    - name: flush privs table
+      command: "mysql -Ae 'flush privileges;'"
 - hosts: dbservers[0]
   remote_user: root
   become: true
-  gather_facts: false
+  gather_facts: true
+  vars_files:
+    - playbook_vars.yml
   tasks:
-    - name: create replication user
-      mysql_user:
-        login_user=admin
-        login_password=Icui4cxh!$$
-        login_host=localhost
-        name={{ repl_user }}
-        host="%"
-        password={{ repl_pwd }}
-        priv="*.*:REPLICATION SLAVE,RELOAD,REPLICATION CLIENT"
-        state=present
-    - name: flush privs.  table
-      command: "mysql -Ae 'flush privileges;'"
-    - name: get master_log_file
-      command: "mysql -ABNe 'show master status;' |  cut -f 1"
+    - set_fact:
+        master_ip: "{{ ansible_default_ipv4.address }}"
+        cacheable: yes
+    - name: get master log file
+      shell: "mysql -ABNe 'show master status;' |  cut -f 1"
       register: master_log_file
-    - name: get master_log_pos
-      command: "mysql -ABNe 'show master status;' |  cut -f 2"
+    - name: get master log pos
+      shell: "mysql -ABNe 'show master status;' |  cut -f 2"
       register: master_log_pos
+- hosts: dbservers[1:]
+  remote_user: root
+  become: true
+  gather_facts: true
+  vars_files:
+    - playbook_vars.yml
+  vars:
+    master_host: "{{ hostvars['master']['ansible_facts']['master_ip'] }}"
+    master_logfile: "{{ hostvars['master']['master_log_file']['stdout'] }}"
+    master_logpos: "{{ hostvars['master']['master_log_pos']['stdout'] }}"
+  tasks:
+    - name: Setup replication
+      command: |
+        mysql -ABNe "CHANGE MASTER TO MASTER_HOST='{{ master_host }}',MASTER_USER='{{ repl_user | quote }}',MASTER_PASSWORD={{ repl_pwd | quote }},MASTER_CONNECT_RETRY=10,MASTER_LOG_FILE='"{{ master_logfile  }}"',MASTER_LOG_POS={{ master_logpos }};"
+    - name: start replication slave thread
+      command: mysql -e "START SLAVE;"
+    - name: set replica to read_only
+      command: mysql -e "SET GLOBAL read_only=ON;"
+
+ 

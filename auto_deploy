@@ -113,6 +113,28 @@ EOF
 
 begin_install(){
   echo "Starting task..."
+  default_version="latest"
+  read -ep "Enter Mariadb version(e.g. 10.4) [$default_version]: " mariadb_version
+  selected_version=${mariadb_version-$default_version}
+
+  echo "Choose MariaDB distribution to install: "
+  select edition in  "Enterprise" "Community" "quit"
+do
+  	case $edition in 
+                Enterprise) echo "Selected edition: Enterprise"; edition="Enterprise";;
+                Community) echo "Selected edition: Community"; edition="Community";;
+                quit) echo "Terminating Program... Bye..."; exit 1;;
+                *) echo "Invalid option"; break;;
+        esac
+	break
+done
+
+  if [[ $edition == "Enterprise" ]]; then
+      read -p "Enter download Token:" cust_key
+      #write customer token  key to config file
+      #sed -i "s/custToken/$cust_key/g" deploy_standalone_enterprise.yml 
+  fi
+
   read -p "Enter Number of Nodes:" no_instances
 if [[ $no_instances -gt 0 ]]; then 
    #echo $?
@@ -172,7 +194,7 @@ echo
    echo
    read -p "Proceed with deploying to the above servers[Y/N]: "  conf_pr
    if [[ $conf_pr = "y" || $conf_pr = "yes" ]]; then
-   	echo "Launching Auto Deploy."; launchAnsible
+   	echo "Launching Auto Deploy."; launchAnsible false $edition
    elif [[ $conf_pr = "n" || $conf_pr = "no" ]]; then
    echo "Terminating Program... Bye..."
    fi
@@ -281,9 +303,8 @@ start_deployment(){
   if [[ "$1" == "true" && "$2" == "Community" ]]; then
     ansible-playbook deploy_standalone.yml -i $custom_host_file --extra-vars "dbVersion=$selected_version"
     elif [[ "$1" == "true" && "$2" == "Enterprise" ]]; then
-    echo "$cust_key"
     ansible-playbook deploy_standalone_enterprise.yml -i $custom_host_file --extra-vars "dbVersion=$selected_version download_token=$cust_key"
-  elif [[ "$1" == "false" && "$2" == "Community" ]]; then
+  elif [[ "$1" == "false" && "$2" == "Enterprise" ]]; then
     ansible-playbook deploy_replication.yml -i $custom_host_file --extra-vars "dbVersion=$selected_version download_token=$cust_key"
   fi
 

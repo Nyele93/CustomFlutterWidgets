@@ -1,6 +1,6 @@
 ---
 #list of variables to be used in the playbook run.
 vars:
-repl_pwd: s3cretPwd$!$
-repl_user: repl_user
+repl_pwd: "s3cretPwd$!L"
+repl_user: "repl_user"
 
