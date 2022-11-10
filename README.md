@@ -10,7 +10,7 @@ run the command "auto_deploy" to start the automation process. the tools will di
 
 Select one of the tasks below to proceed: 
 -------------------------------------------------
-1) MASTER-REPLICAS	 3) Maxscale
+1) MASTER-REPLICAS	 3) MAXSCALE
 2) STANDALONE_INSTANCES	 4) quit
 
 1. MASTER-REPLICAS
@@ -19,8 +19,8 @@ This will run the automated task to deploy a master-replica replication topology
 2. STANDALONE_INSTANCES
 This will run the automated task to deploy MariaDB to standalones nodes.
 
-3. GALERA_CLUSTER (available from next release)
-This will run the automated task to deploy a Galera replication topology. 
+3. MAXSCALE
+This will run the automated task to deploy a Maxscale instance on the target server.
 
 When any of the above tasks is started, it will prompt for the following values to configure the target worker nodes:
  . alias - this will be alias that will be used for noting the server in the ansible inventory. for this setup, the value for the master instance should be entered as "master"
