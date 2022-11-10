@@ -10,7 +10,7 @@ run the command "auto_deploy" to start the automation process. the tools will di
 
 Select one of the tasks below to proceed: 
 -------------------------------------------------
-1) MASTER-REPLICAS	 3) GALERA_CLUSTER
+1) MASTER-REPLICAS	 3) Maxscale
 2) STANDALONE_INSTANCES	 4) quit
 
 1. MASTER-REPLICAS
