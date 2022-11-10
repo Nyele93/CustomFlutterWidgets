@@ -49,6 +49,10 @@
               name: mariadb
               enabled: yes
               state: started
+    - name: enable mariadb service
+      service:
+        name: mariadb
+        enabled: yes
     - name: reset bind_address
       command: sed -i 's/bind-address/#bind-address/g' /etc/mysql/mariadb.conf.d/50-server.cnf
     - name: Generate server_id for the DB Servers

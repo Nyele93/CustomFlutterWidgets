@@ -67,7 +67,9 @@ log-queries-not-using-indexes
 #       other settings you may need to change.
 server_id              = {{ mysql_server_id.stdout }}
 log_bin                = /var/log/mysql/mysql-bin.log
-expire_logs_days        = 10
+expire_logs_days       = 10
+relay_log              = /var/log/mysql/mysql-relay-bin
+relay_log_index	       = /var/log/mysql/mysql-relay-bin.index
 #max_binlog_size        = 100M
 sync_binlog		= 1
 innodb_flush_log_at_trx_commit		= 1
