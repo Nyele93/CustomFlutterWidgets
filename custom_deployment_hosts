@@ -1,1 +1,2 @@
 [dbservers]
+n1 ansible_ssh_host=192.168.1.28 ansible_connection=ssh ansible_user=root ansible_password=Icui4cu1993

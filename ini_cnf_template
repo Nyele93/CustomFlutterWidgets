@@ -65,7 +65,7 @@ log-queries-not-using-indexes
 # The following can be used as easy to replay backup logs or for replication.
 # note: if you are setting up a replication slave, see README.Debian about
 #       other settings you may need to change.
-server-id              = {{ mysql_server_id.stdout }}
+server_id              = {{ mysql_server_id.stdout }}
 log_bin                = /var/log/mysql/mysql-bin.log
 expire_logs_days        = 10
 #max_binlog_size        = 100M

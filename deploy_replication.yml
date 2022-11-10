@@ -10,7 +10,7 @@
     replication_user: "repl_user"
     dba_user: "dba_usr"
     dba_password: "dba_pwd"
-    mariadb_version: "dbVersion"
+mariadb_version: "dbVersion"
     customer_token: "custToken"
   tasks:
     - name: install dependencies
@@ -26,7 +26,7 @@
     - name: modify repo_setup
       shell: chmod +x mariadb_es_repo_setup
     - name: apply customer token
-      shell: ./mariadb_es_repo_setup --token="{{ customer_token }}" --apply --mariadb-server-version="{{ mariadb_version }}"
+mariadb_version: "dbVersion"
     #- name: refresh yum repo
       #command: yum clean all
     #- name: Create MariaDB repo

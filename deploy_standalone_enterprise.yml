@@ -5,11 +5,8 @@
   become: true
   become_user: root
   gather_facts: true
-  vars:
-    repl_password: "s3cretPwd"
-    repl_user: "repl_user"
-    mariadb_version: "dbVersion"
-    customer_token: "custToken"
+  vars_files:
+    - playbook_vars.yml
   tasks:
     - name: install needed dependencies
       apt:
@@ -18,40 +15,35 @@
           - apt-transport-https
         state: present
       when: ansible_facts['distribution'] == "Ubuntu"
-    - name: set up MariaDB repository
+    - name: get MariaDB repository helper script
       shell: wget https://dlm.mariadb.com/enterprise-release-helpers/mariadb_es_repo_setup
       register: repo_check
     - name: modify repo_setup
       shell: chmod +x mariadb_es_repo_setup
-    - name: apply customer token
-      shell: ./mariadb_es_repo_setup --token="{{ customer_token }}" --apply --mariadb-server-version="{{ mariadb_version }}"
-      #add to suppress warning here.
-    #- name: refresh yum repo
-      #command: yum clean all
-    #- name: Create MariaDB repo
-      #copy: 
-           #src: mariadb.repo
-           #dest: /etc/yum.repos.d/mariadb.repo
-    - name: install mariadb
-      #yum:
-          #name: 
-            #- mariadb-server
-            #- python3-PyMySQL
-          #enablerepo: mariadb-repo
-          #state: latest
-          #update_cache: yes
-      #when: ansible_distribution == "CentOS | Debian"
+    - name: apply customer download token
+      shell: sudo ./mariadb_es_repo_setup --token="{{ download_token }}" --apply --mariadb-server-version="{{ dbVersion }}"
+    - name: install mariadb for CentOS/Debian/RHEL
+      yum:
+        name: 
+          - mariadb-server
+          - mariadb-client
+          - mariadb-backup
+          - python3-PyMySQL
+        enablerepo: mariadb-repo
+        #state: latest
+        update_cache: yes
+      when: ansible_facts['distribution'] == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+    - name: install mariadb for Ubuntu
       apt:
         pkg:
           - mariadb-server
           - mariadb-client
           - mariadb-backup
         state: present
-        #default_release:
-        update_cache: yes
+        #update_cache: yes
         install_recommends: yes
         #cache_valid_time: 7200
-      when: ansible_facts['distribution'] == "Ubuntu"
+      when: ansible_facts['distribution'] == 'Debian' or ansible_distribution == 'Ubuntu'
     - name: Start mariadb service
       service:
               name: mariadb
@@ -60,11 +52,8 @@
     - name: reset bind_address
       command: sed -i 's/bind-address/#bind-address/g' /etc/mysql/mariadb.conf.d/50-server.cnf
     - name: Generate server_id for the DB Servers
-      shell: cat /proc/sys/kernel/random/uuid | awk -F- '/[0-9]/ {print $1}' | grep -Eo '[0-9][0-9]' | head -1
+      shell: cat /proc/sys/kernel/random/uuid | awk -F- '/[0-9]/ {print $1}' | grep -Eo '[0-9][0-9]' | grep -v '^[0;]' | head -1
       register: mysql_server_id
-    - name: check value
-      debug:
-        msg: "{{ mysql_server_id.stdout }}"
     - name: Copy my.cnf template files
       template:
         src: ini_cnf_template
