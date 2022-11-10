@@ -7,7 +7,6 @@ declare -i inst_nos
 declare edition
 #declare array to hold instance details: 
 declare -r custom_host_file="custom_deployment_hosts"
-declare -r custom_dns_file="custom_dns_file"
 declare -r inv_group_name="dbservers"
 #echo "enter username";  read uname
 #read -p "which program?" prog 
@@ -183,10 +182,6 @@ EOF
 cat >> $custom_host_file <<-EOF
 $alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user ansible_password=$ssh_password
 EOF
-#write hostname to /etc/hosts
-cat >> $custom_dns_file <<-EOF
-$host  $alias
-EOF
 
    done
 echo
@@ -274,10 +269,6 @@ EOF
 #write custom host deployment
 cat >> $custom_host_file <<-EOF
 $alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user ansible_password=$ssh_password
-EOF
-#write hostname to /etc/hosts
-cat >> $custom_dns_file <<-EOF
-$host  $alias
 EOF
 
    done
