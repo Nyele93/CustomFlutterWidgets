@@ -1,6 +1,7 @@
 #!/bin/bash
 declare -a address_list
 template_file=maxscale_cnf_template
+echo "Select Maxscale module: "
 select module_type in  "mariadbmon" "galeramon" "quit"
 do
   	case $module_type in 
