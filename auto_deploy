@@ -448,7 +448,7 @@ start_deployment_maxscale(){
    echo "[NOTE]: [----------------------starting maxscale deployment----------------------]"
    echo "[NOTE]: Initial checks passed. Proceeding to deploy on configured nodes"
    echo "[NOTE]: Ensure configured hosts are properly captured in Playbook."
-   ansible-playbook deploy_maxscale.yml -i $custom_host_file --extra-vars "dbVersion=$selected_version download_token=$cust_key"
+   ansible-playbook deploy_maxscale.yml -i $custom_host_file --extra-vars "mxsVersion=$maxscale_version download_token=$cust_key"
 }
 
 check_OS(){
