@@ -1,6 +1,6 @@
 ---
 - name: MariaDB database
-  hosts: dbservers
+  hosts: maxscale
   remote_user: root
   become: true
   become_user: root
@@ -21,49 +21,27 @@
     - name: modify repo_setup
       shell: chmod +x mariadb_es_repo_setup
     - name: apply customer download token
-      shell: sudo ./mariadb_es_repo_setup --mariadb-server-version="{{ dbVersion }}"
+      shell: sudo ./mariadb_es_repo_setup --token="{{ download_token }}" --apply --skip-server --skip-tools --mariadb-maxscale-version="{{ dbVersion }}"
     - name: install mariadb for CentOS/Debian/RHEL
       yum:
         name: 
-          - mariadb-server
-          - mariadb-client
-          - mariadb-backup
-          - python3-PyMySQL
-        #enablerepo: mariadb-repo
+          - maxscale
+        #update_cache: yes
         state: present
-        update_cache: yes
       when: ansible_facts['distribution'] == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
     - name: install mariadb for Ubuntu
       apt:
         pkg:
-          - mariadb-server
-          - mariadb-client
-          - mariadb-backup
+          - maxscale
         state: present
-        update_cache: yes
+        #update_cache: yes
         install_recommends: yes
         #cache_valid_time: 7200
       when: ansible_facts['distribution'] == 'Debian' or ansible_distribution == 'Ubuntu'
-    - name: Start mariadb service
+    - name: Start maxscale service
       service:
-              name: mariadb
+              name: maxscale
               enabled: yes
               state: started
-    - name: reset bind_address
-      command: sed -i 's/bind-address/#bind-address/g' /etc/mysql/mariadb.conf.d/50-server.cnf
-    - name: Generate server_id for the DB Servers
-      shell: cat /proc/sys/kernel/random/uuid | awk -F- '/[0-9]/ {print $1}' | grep -Eo '[0-9][0-9]' | grep -v '^[0;]' | head -1
-      register: mysql_server_id
-    - name: Copy my.cnf template files
-      template:
-        src: ini_cnf_template
-        dest: /etc/mysql/mariadb.conf.d/50-server.cnf
-        owner: mysql
-        group: mysql
-        mode: 0600
-    - name: Restart mariadb service
-      service:
-              name: mariadb
-              enabled: yes
-              state: restarted
+
 

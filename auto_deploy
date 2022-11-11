@@ -7,7 +7,7 @@ declare -i inst_nos
 declare edition
 #declare array to hold instance details: 
 declare -r custom_host_file="custom_deployment_hosts"
-declare -r inv_group_name="dbservers"
+declare inv_group_name="dbservers"
 #echo "enter username";  read uname
 #read -p "which program?" prog 
 #read -s -p "Enter Password: " password
@@ -221,6 +221,105 @@ else
 fi
 }
 
+setup_maxscale(){
+        unset inv_group_name
+	 inv_group_name="maxscale"
+cat > $custom_host_file <<-EOF
+[$inv_group_name]
+EOF
+    echo "Starting task..."
+  default_version="latest"
+  read -ep "Enter Maxscale version(e.g. 2.5) [$default_version]: " maxscale_version
+  selected_version=${mariadb_version-$default_version}
+      read -p "Enter download Token:" cust_key
+
+  read -p "Enter Number of Nodes:" no_instances
+if [[ $no_instances -gt 0 ]]; then 
+   #echo $?
+   #call next program
+   for ((i=1; i<=$no_instances; i++))
+   do
+     	echo
+	echo "configure instance: $i"
+
+    	read -p "alias($i): " alias
+        read -p "host($i):  " host
+        read -p "ssh_user:  " ssh_user
+		
+while [[ -z $ssh_trust_set ]]
+   do
+    read -p "Use ssh_trust connection - assumes key is in place. [y/n]: "  ssh_trust_set
+    if [[ $ssh_trust_set = "y" || $ssh_trust_set = "yes" ]]; then 
+          hosts_array[$((i-1))]="$host"
+#line should execute only if using dynamic hosts
+cat >> server_details <<-EOF
+$inst_no,$alias,$host,$ssh_user,"not set(using keys)"
+EOF
+
+#write custom host deployment
+cat >> $custom_host_file <<-EOF
+$alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user
+EOF
+    elif [[ $ssh_trust_set = "n" || $ssh_trust_set = "no" ]]; then
+        unset ssh_password
+        unset charcount        
+        unset inst_no 
+        inst_no=$i
+        charcount=0
+        prompt="ssh_password: "
+        while IFS= read -s -r -n 1 -p "$prompt" ssh_pwd
+        do
+	        #take and mask password with * characters
+                if [[ $ssh_pwd == $'\0' ]]
+                then
+                   break
+                fi
+                #handle Backspaces
+                if [[ $ssh_pwd == $'\177' ]]; then
+                    if [[ $charcount -gt 0 ]]; then
+                        charcount=$((charcount-1))
+                        prompt=$'\b \b'
+                        ssh_password="${ssh_password%?}"
+                    else
+                        prompt=''
+                    fi
+                else
+                    charcount=$((charcount+1))
+                    prompt='*'
+                    ssh_password+="$ssh_pwd"
+                fi
+        done
+		hosts_array[$((i-1))]="$host"
+declare redacted_pwd=${ssh_password//[a-z0-9]/x}
+cat >> server_details <<-EOF
+$inst_no,$alias,$host,$ssh_user,$redacted_pwd
+EOF
+#write custom host deployment
+cat >> $custom_host_file <<-EOF
+$alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user ansible_password=$ssh_password
+EOF
+     fi
+    done
+
+   done
+echo
+   printTableformat ',' "$(cat server_details)"
+   echo
+   while [[ -z $conf_pr ]]
+  do
+   read -p "Proceed with deploying to the above servers[Y/N]: "  conf_pr
+   if [[ $conf_pr = "y" || $conf_pr = "yes" ]]; then
+        echo "Launching Auto Deploy."; start_deployment_maxscale
+   elif [[ $conf_pr = "n" || $conf_pr = "no" ]]; then
+   echo "Terminating Program... Bye..."
+   fi
+  done
+#**********
+else
+   echo "[Error] : Please enter a Number greater than 0"
+fi 
+}
+
 standalone_install(){
   echo "Starting task..."
   default_version="latest"
@@ -345,6 +444,13 @@ start_deployment(){
 
 }
 
+start_deployment_maxscale(){
+   echo "[NOTE]: [----------------------starting maxscale deployment----------------------]"
+   echo "[NOTE]: Initial checks passed. Proceeding to deploy on configured nodes"
+   echo "[NOTE]: Ensure configured hosts are properly captured in Playbook."
+   ansible-playbook deploy_maxscale.yml -i $custom_host_file --extra-vars "dbVersion=$selected_version download_token=$cust_key"
+}
+
 check_OS(){
 printf "\033[0;33mDetecting Server Architectures\033[33;5m......\033[0m\n"
 oscheck_status=$(sshpass -p $ssh_password ssh -o ConnectTimeout=5 $ssh_user@$host 'bash -s' < $(dirname "$0")/check_distro.sh)
@@ -391,7 +497,7 @@ do
 	case $task in 
 		MASTER-REPLICAS) echo "Selected task: MASTER-REPLICAS"; begin_install;;
 		STANDALONE_INSTANCES) echo "Selected task: SINGLE_INSTANCES"; standalone_install;;
-		MAXSCALE) echo "Selected task: INSTALL & CONFIGURE MAXSCALE"; break;;
+		MAXSCALE) echo "Selected task: INSTALL & CONFIGURE MAXSCALE"; setup_maxscale;;
                 quit) echo "Terminating Program... Bye..."; break;;
 		*) echo "Invalid option";;
 	esac

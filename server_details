@@ -1,2 +1,2 @@
 S/N,ALIAS,HOST,SSH_USER,SSH_PASSWORD
-,master,192.168.1.21,root,"not set(using keys)"
+1,mxs1,192.168.1.21,root,xxxxxxxxxxx
