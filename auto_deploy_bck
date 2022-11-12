@@ -10,7 +10,6 @@ declare -r custom_host_file="custom_deployment_hosts"
 declare inv_group_name="dbservers"
 declare error_text="\033[0;31m"
 declare success_text='\033[0;32m'
-declare info_text='\033[0;33m'
 declare clear_txtcolor='\033[0m'
 echo
 echo "====================================================="
@@ -112,50 +111,24 @@ cat > $custom_host_file <<-EOF
 EOF
 
 read_connect_file(){
-count=0
-echo -e "${info_text}*Ensure connect.config file is in the right format...*${clear_txtcolor}"
 #prepare local inventory file
 sed -i '1,3!d' custom_deployment_hosts
 #get username from connect.config file
-while read -p "enter file name (full_path): " connect_file; do
-  if [[ ! -z $connect_file ]];then
-    break
-  fi
-   echo -e "${error_text}file name cannot be empty.${clear_txtcolor}"
-done
+read -p "enter file name (full_path): " connect_file
 user=$(fgrep User $connect_file 2>/dev/null| grep -v "^#" | sed -e "s/Username//g" | tr -d " \t" | head -1)
 #get and set hosts from connect.config
 IFS="
 "
- for srv in $(fgrep -B1 Hostname $connect_file | grep -v "^#" | tr -d "\n" | sed -e "s/--/\n/g" | tr -s " " "\t")
+ for srv in $(fgrep -B1 Hostname connect.config | grep -v "^#" | tr -d "\n" | sed -e "s/--/\n/g" | tr -s " " "\t")
   do
     	IFS=$(echo -e "\t") a=($srv)
         name=${a[1]}
         addr=${a[3]}
-        count=$((count+1))
     echo "$name ansible_ssh_host=$addr ansible_connection=ssh ansible_user=$user" >> custom_deployment_hosts
-redacted_pwd="using ssh key"
-cat >> server_details <<-EOF
-$count,$name,$addr,$user,$redacted_pwd
-EOF
-
+    #echo -n "ansible_$name "
 done
    IFS="
 "
-  #go to next program - print server details and confirm.
-  echo
-   printTableformat ',' "$(cat server_details)"
-   echo
-    while [[ -z $conf_pr ]]
-   do
-   read -p "Proceed with deploying to the above servers[Y/N]: "  conf_pr
-   if [[ $conf_pr = "y" || $conf_pr = "yes" ]]; then
-        echo "Launching Auto Deploy."; start_deployment_maxscale
-   elif [[ $conf_pr = "n" || $conf_pr = "no" ]]; then
-   echo "Terminating Program... Bye..."
-   fi
-  done
-
 }
 
 begin_install(){
@@ -185,10 +158,6 @@ done
       done
 
   fi
-    read -p "Read Server(s) details from connect file? (y)es/(n)o: " read_from_connect
-    if [[ $read_from_connect = "y" || $read_from_connect = "yes" ]]; then
-          read_connect_file
-   elif [[ $read_from_connect = "n" || $read_from_connect = "no" ]]; then
 
   read -p "Enter Number of Nodes:" no_instances
 if [[ $no_instances -gt 0 ]]; then 
@@ -250,6 +219,7 @@ $alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user ansi
 EOF
 fi
    done
+
 echo
    printTableformat ',' "$(cat server_details)"
    echo
@@ -263,7 +233,7 @@ echo
    exit 1
    fi
   done
-fi
+
 else
    echo "[Error] : Please enter a Number greater than 0"
 fi

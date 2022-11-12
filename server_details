@@ -1,1 +1,4 @@
 S/N,ALIAS,HOST,SSH_USER,SSH_PASSWORD
+1,frpspltn3-10233,192.168.37.6,mariadbadmin,using ssh key
+2,frpspllf1-10236,192.168.37.10,mariadbadmin,using ssh key
+3,frpspllf1-10229,192.168.37.9,mariadbadmin,using ssh key
