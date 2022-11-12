@@ -8,9 +8,9 @@ declare edition
 #declare array to hold instance details: 
 declare -r custom_host_file="custom_deployment_hosts"
 declare inv_group_name="dbservers"
-#echo "enter username";  read uname
-#read -p "which program?" prog 
-#read -s -p "Enter Password: " password
+declare error_text="\033[0;31m"
+declare success_text='\033[0;32m'
+declare clear_txtcolor='\033[0m'
 echo
 echo "====================================================="
 echo $wlc_text
@@ -129,9 +129,13 @@ do
 done
 
   if [[ $edition == "Enterprise" ]]; then
-      read -p "Enter download Token:" cust_key
-      #write customer token  key to config file
-      #sed -i "s/custToken/$cust_key/g" deploy_standalone_enterprise.yml 
+      while read -p "Enter download Token:" cust_key; do
+      if [[ ! -z $cust_key ]]; then
+        break
+      fi
+      echo -e "${error_text}Download Token cannot be empty. Please enter a token\a${clear_txtcolor}"
+      done
+
   fi
 
   read -p "Enter Number of Nodes:" no_instances
@@ -143,29 +147,17 @@ if [[ $no_instances -gt 0 ]]; then
 	echo
 	echo "configure instance: $i"
 	#instance_details[alias]
+        unset inst_no 
+        inst_no=$i
 	read -p "alias($i): " alias
 	read -p "host($i):  " host
 	read -p "ssh_user:  " ssh_user
-
-while [[ -z $ssh_trust_set ]]
-   do
-    read -p "Use ssh_trust connection - assumes key is in place. [y/n]: "  ssh_trust_set
-    if [[ $ssh_trust_set = "y" || $ssh_trust_set = "yes" ]]; then 
-          hosts_array[$((i-1))]="$host"
-#line should execute only if using dynamic hosts
-cat >> server_details <<-EOF
-$inst_no,$alias,$host,$ssh_user,"not set(using keys)"
-EOF
-
-#write custom host deployment
-cat >> $custom_host_file <<-EOF
-$alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user
-EOF
-    elif [[ $ssh_trust_set = "n" || $ssh_trust_set = "no" ]]; then
+        read -p "Use ssh_trust connection - assumes key is in place. [y/n]: "  ssh_trust_set
+        if [[ $ssh_trust_set = "y" || $ssh_trust_set = "yes" ]]; then
+        declare redacted_pwd="using ssh Key"
+        elif [[ $ssh_trust_set = "n" || $ssh_trust_set = "no" ]]; then
 	unset ssh_password
-        unset charcount        
-        unset inst_no 
-        inst_no=$i
+        unset charcount
 	charcount=0
 	prompt="ssh_password: "
 	while IFS= read -s -r -n 1 -p "$prompt" ssh_pwd
@@ -189,20 +181,24 @@ EOF
 	            prompt='*'
 		    ssh_password+="$ssh_pwd"
 		fi
-	done
-hosts_array[$((i-1))]="$host"
 declare redacted_pwd=${ssh_password//[a-z0-9]/x}
+done
+fi
 cat >> server_details <<-EOF
 $inst_no,$alias,$host,$ssh_user,$redacted_pwd
 EOF
 #write custom host deployment
+if [[ -z $ssh_password ]]; then
+cat >> $custom_host_file <<-EOF
+$alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user
+EOF
+else
 cat >> $custom_host_file <<-EOF
 $alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user ansible_password=$ssh_password
 EOF
-    fi
+fi
    done
 
-   done
 echo
    printTableformat ',' "$(cat server_details)"
    echo
@@ -213,6 +209,7 @@ echo
    	echo "Launching Auto Deploy."; launchAnsible false $edition
    elif [[ $conf_pr = "n" || $conf_pr = "no" ]]; then
    echo "Terminating Program... Bye..."
+   exit 1
    fi
   done
 
@@ -239,85 +236,77 @@ if [[ $no_instances -gt 0 ]]; then
    #call next program
    for ((i=1; i<=$no_instances; i++))
    do
-     	echo
+	echo
 	echo "configure instance: $i"
-
-    	read -p "alias($i): " alias
-        read -p "host($i):  " host
-        read -p "ssh_user:  " ssh_user
-		
-while [[ -z $ssh_trust_set ]]
-   do
-    read -p "Use ssh_trust connection - assumes key is in place. [y/n]: "  ssh_trust_set
-    if [[ $ssh_trust_set = "y" || $ssh_trust_set = "yes" ]]; then 
-          hosts_array[$((i-1))]="$host"
-#line should execute only if using dynamic hosts
-cat >> server_details <<-EOF
-$inst_no,$alias,$host,$ssh_user,"not set(using keys)"
-EOF
-
-#write custom host deployment
-cat >> $custom_host_file <<-EOF
-$alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user
-EOF
-    elif [[ $ssh_trust_set = "n" || $ssh_trust_set = "no" ]]; then
-        unset ssh_password
-        unset charcount        
+	#instance_details[alias]
         unset inst_no 
         inst_no=$i
-        charcount=0
-        prompt="ssh_password: "
-        while IFS= read -s -r -n 1 -p "$prompt" ssh_pwd
-        do
-	        #take and mask password with * characters
-                if [[ $ssh_pwd == $'\0' ]]
-                then
-                   break
-                fi
-                #handle Backspaces
-                if [[ $ssh_pwd == $'\177' ]]; then
-                    if [[ $charcount -gt 0 ]]; then
+	read -p "alias($i): " alias
+	read -p "host($i):  " host
+	read -p "ssh_user:  " ssh_user
+        read -p "Use ssh_trust connection - assumes key is in place. [y/n]: "  ssh_trust_set
+        if [[ $ssh_trust_set = "y" || $ssh_trust_set = "yes" ]]; then
+        declare redacted_pwd="using ssh Key"
+        elif [[ $ssh_trust_set = "n" || $ssh_trust_set = "no" ]]; then
+	unset ssh_password
+        unset charcount
+	charcount=0
+	prompt="ssh_password: "
+	while IFS= read -s -r -n 1 -p "$prompt" ssh_pwd
+	do
+		#take and mask password with * characters
+		if [[ $ssh_pwd == $'\0' ]]
+		then
+		   break
+		fi
+		#handle Backspaces
+		if [[ $ssh_pwd == $'\177' ]]; then
+		    if [[ $charcount -gt 0 ]]; then
                         charcount=$((charcount-1))
-                        prompt=$'\b \b'
-                        ssh_password="${ssh_password%?}"
+       			prompt=$'\b \b'
+		        ssh_password="${ssh_password%?}"
                     else
-                        prompt=''
+			prompt=''
                     fi
-                else
-                    charcount=$((charcount+1))
-                    prompt='*'
-                    ssh_password+="$ssh_pwd"
-                fi
-        done
-		hosts_array[$((i-1))]="$host"
+		else
+		    charcount=$((charcount+1))
+	            prompt='*'
+		    ssh_password+="$ssh_pwd"
+		fi
 declare redacted_pwd=${ssh_password//[a-z0-9]/x}
+done
+fi
 cat >> server_details <<-EOF
 $inst_no,$alias,$host,$ssh_user,$redacted_pwd
 EOF
 #write custom host deployment
+if [[ -z $ssh_password ]]; then
+cat >> $custom_host_file <<-EOF
+$alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user
+EOF
+else
 cat >> $custom_host_file <<-EOF
 $alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user ansible_password=$ssh_password
 EOF
-     fi
-    done
-
+fi
    done
+
 echo
    printTableformat ',' "$(cat server_details)"
    echo
-   while [[ -z $conf_pr ]]
-  do
+    while [[ -z $conf_pr ]]
+   do
    read -p "Proceed with deploying to the above servers[Y/N]: "  conf_pr
    if [[ $conf_pr = "y" || $conf_pr = "yes" ]]; then
-        echo "Launching Auto Deploy."; start_deployment_maxscale
+   	echo "Launching Auto Deploy."; start_deployment_maxscale
    elif [[ $conf_pr = "n" || $conf_pr = "no" ]]; then
    echo "Terminating Program... Bye..."
    fi
   done
-#**********
+
 else
    echo "[Error] : Please enter a Number greater than 0"
-fi 
+fi
 }
 
 standalone_install(){
@@ -351,30 +340,18 @@ if [[ $no_instances -gt 0 ]]; then
    do
 	echo
 	echo "configure instance: $i"
-     
+	#instance_details[alias]
+        unset inst_no 
+        inst_no=$i
 	read -p "alias($i): " alias
 	read -p "host($i):  " host
 	read -p "ssh_user:  " ssh_user
-
-while [[ -z $ssh_trust_set ]]
-   do
-    read -p "Use ssh_trust connection - assumes key is in place. [y/n]: "  ssh_trust_set
-    if [[ $ssh_trust_set = "y" || $ssh_trust_set = "yes" ]]; then 
-          hosts_array[$((i-1))]="$host"
-#line should execute only if using dynamic hosts
-cat >> server_details <<-EOF
-$inst_no,$alias,$host,$ssh_user,"not set(using keys)"
-EOF
-
-#write custom host deployment
-cat >> $custom_host_file <<-EOF
-$alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user
-EOF
-    elif [[ $ssh_trust_set = "n" || $ssh_trust_set = "no" ]]; then
+        read -p "Use ssh_trust connection - assumes key is in place. [y/n]: "  ssh_trust_set
+        if [[ $ssh_trust_set = "y" || $ssh_trust_set = "yes" ]]; then
+        declare redacted_pwd="using ssh Key"
+        elif [[ $ssh_trust_set = "n" || $ssh_trust_set = "no" ]]; then
 	unset ssh_password
-        unset charcount        
-        unset inst_no 
-        inst_no=$i
+        unset charcount
 	charcount=0
 	prompt="ssh_password: "
 	while IFS= read -s -r -n 1 -p "$prompt" ssh_pwd
@@ -398,25 +375,29 @@ EOF
 	            prompt='*'
 		    ssh_password+="$ssh_pwd"
 		fi
-	done
-hosts_array[$((i-1))]="$host"
 declare redacted_pwd=${ssh_password//[a-z0-9]/x}
+done
+fi
 cat >> server_details <<-EOF
 $inst_no,$alias,$host,$ssh_user,$redacted_pwd
 EOF
 #write custom host deployment
+if [[ -z $ssh_password ]]; then
+cat >> $custom_host_file <<-EOF
+$alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user
+EOF
+else
 cat >> $custom_host_file <<-EOF
 $alias ansible_ssh_host=$host ansible_connection=ssh ansible_user=$ssh_user ansible_password=$ssh_password
 EOF
-     fi
-    done
-
+fi
    done
+
 echo
    printTableformat ',' "$(cat server_details)"
    echo
-   while [[ -z $conf_pr ]]
-  do
+    while [[ -z $conf_pr ]]
+   do
    read -p "Proceed with deploying to the above servers[Y/N]: "  conf_pr
    if [[ $conf_pr = "y" || $conf_pr = "yes" ]]; then
    	echo "Launching Auto Deploy."; launchAnsible true $edition
@@ -424,16 +405,23 @@ echo
    echo "Terminating Program... Bye..."
    fi
   done
-#**********
+
 else
    echo "[Error] : Please enter a Number greater than 0"
-fi  
+fi
 }
 
 start_deployment(){
   echo "[NOTE]: [----------------------starting deployment----------------------]"
   echo "[NOTE]: Initial checks passed. Proceeding to deploy on configured nodes"
   echo "[NOTE]: Ensure configured hosts are properly captured in Playbook."
+  echo "populating configuration files and template."
+  echo -ne '##########          (30%)\r'
+  sleep 1
+  echo -ne '#######################         (60%)\r'
+  sleep 1
+  echo -ne '##########################################       (100%) [status: Complete. Proceeding] \r'
+  echo -ne '\n'
   if [[ "$1" == "true" && "$2" == "Community" ]]; then
     ansible-playbook deploy_standalone.yml -i $custom_host_file --extra-vars "dbVersion=$selected_version"
     elif [[ "$1" == "true" && "$2" == "Enterprise" ]]; then
@@ -453,7 +441,7 @@ do
   	case $module_type in 
                 mariadbmon) echo "Selected module_type: mariadbmon"; echo $module_type ;;
                 galeramon) echo "Selected module_type: galeramon"; echo $module_type ;;
-                quit) echo "Terminating Program... Bye..."; break;;
+                quit) echo "Terminating Program... Bye..."; exit 1;;
                 *) echo "Invalid option";;
         esac
 	break
