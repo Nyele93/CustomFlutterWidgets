@@ -279,8 +279,17 @@ EOF
   default_version="latest"
   read -ep "Enter Maxscale version(e.g. 2.5) [$default_version]: " maxscale_version
   selected_version=${mariadb_version-$default_version}
-      read -p "Enter download Token:" cust_key
+      while read -p "Enter download Token:" cust_key; do
+      if [[ ! -z $cust_key ]]; then
+        break
+      fi
+      echo -e "${error_text}Download Token cannot be empty. Please enter a token\a${clear_txtcolor}"
+      done
 
+ read -p "Read Server(s) details from connect file? (y)es/(n)o: " read_from_connect
+    if [[ $read_from_connect = "y" || $read_from_connect = "yes" ]]; then
+          read_connect_file
+   elif [[ $read_from_connect = "n" || $read_from_connect = "no" ]]; then
   read -p "Enter Number of Nodes:" no_instances
 if [[ $no_instances -gt 0 ]]; then 
    #echo $?
@@ -354,7 +363,7 @@ echo
    echo "Terminating Program... Bye..."
    fi
   done
-
+fi
 else
    echo "[Error] : Please enter a Number greater than 0"
 fi
@@ -378,11 +387,18 @@ do
 	break
 done
   if [[ $edition == "Enterprise" ]]; then
-      read -p "Enter download Token:" cust_key
-      #write customer token  key to config file
-      #sed -i "s/custToken/$cust_key/g" deploy_standalone_enterprise.yml 
-  fi
+      while read -p "Enter download Token:" cust_key; do
+      if [[ ! -z $cust_key ]]; then
+        break
+      fi
+      echo -e "${error_text}Download Token cannot be empty. Please enter a token\a${clear_txtcolor}"
+      done
 
+  fi
+ read -p "Read Server(s) details from connect file? (y)es/(n)o: " read_from_connect
+    if [[ $read_from_connect = "y" || $read_from_connect = "yes" ]]; then
+          read_connect_file
+   elif [[ $read_from_connect = "n" || $read_from_connect = "no" ]]; then
   read -p "Enter Number of Nodes:" no_instances
 if [[ $no_instances -gt 0 ]]; then 
    #echo $?
@@ -456,7 +472,7 @@ echo
    echo "Terminating Program... Bye..."
    fi
   done
-
+fi
 else
    echo "[Error] : Please enter a Number greater than 0"
 fi

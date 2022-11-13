@@ -1,4 +1,4 @@
 [dbservers]
-frpspltn3-10233 ansible_ssh_host=192.168.37.6 ansible_connection=ssh ansible_user=mariadbadmin
-frpspllf1-10236 ansible_ssh_host=192.168.37.10 ansible_connection=ssh ansible_user=mariadbadmin
-frpspllf1-10229 ansible_ssh_host=192.168.37.9 ansible_connection=ssh ansible_user=mariadbadmin
+spltn1 ansible_ssh_host=192.168.1.1 ansible_connection=ssh ansible_user=testuser
+spltn2 ansible_ssh_host=192.168.1.2 ansible_connection=ssh ansible_user=testuser
+spltn3 ansible_ssh_host=192.168.1.3 ansible_connection=ssh ansible_user=testuser
